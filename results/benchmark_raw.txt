@@ -1,0 +1,21 @@
+======================================================================
+SOUP EXPERIMENT TRACKER — LOAD BENCHMARK (50 CONCURRENT RUNS @ 10 EPS)
+======================================================================
+
+--- Profile A: Batched (10 events/batch, 1 batch/s per run -> 500 eps / 50 RPS) ---
+Target Load            : 50 runs × 10 eps = 500 events/sec
+Wall Clock Duration    : 5.404 s (configured 6 s)
+Achieved Throughput    : 555.2 events/sec (55.5 HTTP POST/sec)
+Completeness (DB Rows) : 3000 / 3000 stored (HTTP errors: 0)
+Slow Client Overflows  : 0
+Ingestion HTTP Latency : p50 = 295.48 ms | p95 = 573.34 ms | p99 = 700.78 ms | max = 729.28 ms
+Live SSE Delivery Lag  : p50 = 247.21 ms | p95 = 583.5 ms | p99 = 726.8 ms (600 live events sampled)
+
+--- Profile B: Unbatched (1 event/batch, 10 batches/s per run -> 500 eps / 500 RPS) ---
+Target Load            : 50 runs × 10 eps = 500 events/sec
+Wall Clock Duration    : 24.009 s (configured 6 s)
+Achieved Throughput    : 125.0 events/sec (125.0 HTTP POST/sec)
+Completeness (DB Rows) : 3000 / 3000 stored (HTTP errors: 0)
+Slow Client Overflows  : 0
+Ingestion HTTP Latency : p50 = 242.45 ms | p95 = 1181.38 ms | p99 = 1806.06 ms | max = 4839.63 ms
+Live SSE Delivery Lag  : p50 = 220.21 ms | p95 = 1126.06 ms | p99 = 1655.64 ms (600 live events sampled)

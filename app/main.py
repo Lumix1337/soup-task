@@ -603,6 +603,7 @@ class TrackerApp:
             )
             existing_by_step = {int(r["step"]): r for r in existing_rows}
 
+            rows_to_insert: List[Dict[str, Any]] = []
             for m in unique_metrics:
                 step = m["step"]
                 if step in existing_by_step:
@@ -625,37 +626,52 @@ class TrackerApp:
                 else:
                     last_seq += 1
                     seq = last_seq
-                    await tx.execute(
-                        """
-                        INSERT INTO metrics (
-                            run_id, step, seq, loss, lr, grad_norm, custom_metrics, client_ts
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::timestamptz)
-                        """,
-                        run_id,
-                        step,
-                        seq,
-                        m["loss"],
-                        m["lr"],
-                        m["grad_norm"],
-                        m["custom_metrics"],
-                        m["client_ts"],
-                    )
                     inserted_count += 1
-                    new_events.append(
-                        {
-                            "run_id": run_id,
-                            "step": step,
-                            "seq": seq,
-                            "loss": m["loss"],
-                            "lr": m["lr"],
-                            "grad_norm": m["grad_norm"],
-                            "custom_metrics": m["custom_metrics"],
-                            "client_ts": m["client_ts"],
-                        }
-                    )
+                    row_payload = {
+                        "run_id": run_id,
+                        "step": step,
+                        "seq": seq,
+                        "loss": m["loss"],
+                        "lr": m["lr"],
+                        "grad_norm": m["grad_norm"],
+                        "custom_metrics": m["custom_metrics"],
+                        "client_ts": m["client_ts"],
+                    }
+                    rows_to_insert.append(row_payload)
+                    new_events.append(row_payload)
 
-            if inserted_count > 0:
+            if rows_to_insert:
+                value_clauses: List[str] = []
+                insert_params: List[Any] = []
+                p_idx = 1
+                for r_ins in rows_to_insert:
+                    value_clauses.append(
+                        f"(${p_idx}, ${p_idx+1}, ${p_idx+2}, ${p_idx+3}, "
+                        f"${p_idx+4}, ${p_idx+5}, ${p_idx+6}::jsonb, ${p_idx+7}::timestamptz)"
+                    )
+                    insert_params.extend(
+                        [
+                            r_ins["run_id"],
+                            r_ins["step"],
+                            r_ins["seq"],
+                            r_ins["loss"],
+                            r_ins["lr"],
+                            r_ins["grad_norm"],
+                            r_ins["custom_metrics"],
+                            r_ins["client_ts"],
+                        ]
+                    )
+                    p_idx += 8
+
+                await tx.execute(
+                    f"""
+                    INSERT INTO metrics (
+                        run_id, step, seq, loss, lr, grad_norm, custom_metrics, client_ts
+                    )
+                    VALUES {", ".join(value_clauses)}
+                    """,
+                    *insert_params,
+                )
                 await tx.execute(
                     "UPDATE runs SET last_seq = $1 WHERE id = $2",
                     last_seq,
@@ -843,7 +859,7 @@ class TrackerApp:
                         high_water_seq = seq
             finally:
                 disconnect_task.cancel()
-                with contextlib.suppress(Exception):
+                with contextlib.suppress(BaseException):
                     await disconnect_task
 
     @staticmethod

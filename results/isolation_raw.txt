@@ -1,0 +1,20 @@
+test_full_isolation_suite (tests.test_isolation.TestIsolation.test_full_isolation_suite) ... Executing <Task pending name='Task-2' coro=<TestIsolation.test_full_isolation_suite() running at /home/lumix/soup-ht/soup-tracker/tests/test_isolation.py:27> wait_for=<Future pending cb=[_chain_future.<locals>._call_check_cancel() at /usr/lib64/python3.14/asyncio/futures.py:393, Task.task_wakeup()] created at /usr/lib64/python3.14/asyncio/base_events.py:460> cb=[_run_until_complete_cb() at /usr/lib64/python3.14/asyncio/base_events.py:181] created at /usr/lib64/python3.14/asyncio/runners.py:110> took 1.140 seconds
+Executing <Task finished name='Task-2' coro=<TestIsolation.test_full_isolation_suite() done, defined at /home/lumix/soup-ht/soup-tracker/tests/test_isolation.py:26> result=None created at /usr/lib64/python3.14/asyncio/runners.py:110> took 0.337 seconds
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 3.039s
+
+OK
+
+=== MULTI-TENANT ISOLATION PROOF SUMMARY ===
+1. Read Isolation (GET /runs, /runs/{B}, /metrics)      : PASS (404 Not Found)
+2. Write Isolation (POST /runs/{B}/metrics, /rotate)    : PASS (404 Not Found)
+3. Live SSE Stream Isolation (GET /runs/{B}/stream)     : PASS (404 Not Found)
+4. ID Entropy & Enumeration (UUIDv4, identical 404 body): PASS
+5. Cache Isolation (Cache-Control: private, no-store)   : PASS
+6. Query-Param API Key Block (?api_key= -> 400) & Logs  : PASS (0 keys in logs)
+7. Timing Side-Channel Check (100 probes each)          :
+   - Existing Foreign Run UUID : p50 = 6.440 ms, p95 = 9.931 ms
+   - Non-Existent Random UUID  : p50 = 6.245 ms, p95 = 10.494 ms
+   - Absolute Median Delta     : 0.195 ms

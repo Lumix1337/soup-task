@@ -1,0 +1,15 @@
+test_all_five_silent_failure_scenarios (tests.test_silent_failures.TestSilentFailures.test_all_five_silent_failure_scenarios) ... Executing <Task pending name='Task-2' coro=<TestSilentFailures.test_all_five_silent_failure_scenarios() running at /home/lumix/soup-ht/soup-tracker/tests/test_silent_failures.py:48> wait_for=<Future pending cb=[_chain_future.<locals>._call_check_cancel() at /usr/lib64/python3.14/asyncio/futures.py:393, Task.task_wakeup()] created at /usr/lib64/python3.14/asyncio/base_events.py:460> cb=[_run_until_complete_cb() at /usr/lib64/python3.14/asyncio/base_events.py:181] created at /usr/lib64/python3.14/asyncio/runners.py:110> took 1.173 seconds
+Executing <Task finished name='Task-2' coro=<TestSilentFailures.test_all_five_silent_failure_scenarios() done, defined at /home/lumix/soup-ht/soup-tracker/tests/test_silent_failures.py:47> result=None created at /usr/lib64/python3.14/asyncio/runners.py:110> took 0.379 seconds
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.016s
+
+OK
+
+=== SILENT FAILURES VERIFICATION SUITE ===
+[PASS] 1. Events lost on reconnect : 0 lost (seq 1..3 then catch-up seq 4..8 including late steps 1..3)
+[PASS] 2. Duplicates               : 5x concurrent + overlapping batches -> 4 unique rows, gapless seq 1..4
+[PASS] 3. Slow client overflow     : Queue(maxsize=3) overflowed cleanly -> event: overflow -> recovered seq 1..10
+[PASS] 4. Partial writes rollback  : 0 orphan rows persisted on 422 validation & 409 mid-batch conflict
+[PASS] 5. Old API key after rotate : REST -> 401; open SSE stream terminated with api_key_revoked (0 leaked events)

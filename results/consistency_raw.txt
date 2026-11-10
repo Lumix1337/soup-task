@@ -1,0 +1,34 @@
+test_out_of_order_duplicates_late_and_midstream_reconnect (tests.test_consistency_e2e.TestConsistencyE2E.test_out_of_order_duplicates_late_and_midstream_reconnect) ... Executing <Task pending name='Task-2' coro=<TestConsistencyE2E.test_out_of_order_duplicates_late_and_midstream_reconnect() running at /home/lumix/soup-ht/soup-tracker/tests/test_consistency_e2e.py:325> wait_for=<Future pending cb=[_chain_future.<locals>._call_check_cancel() at /usr/lib64/python3.14/asyncio/futures.py:393, Task.task_wakeup()] created at /usr/lib64/python3.14/asyncio/base_events.py:460> cb=[_run_until_complete_cb() at /usr/lib64/python3.14/asyncio/base_events.py:181] created at /usr/lib64/python3.14/asyncio/runners.py:110> took 0.941 seconds
+Executing <Task finished name='Task-2' coro=<TestConsistencyE2E.test_out_of_order_duplicates_late_and_midstream_reconnect() done, defined at /home/lumix/soup-ht/soup-tracker/tests/test_consistency_e2e.py:324> result=None created at /usr/lib64/python3.14/asyncio/runners.py:110> took 0.331 seconds
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.904s
+
+OK
+
+=== E2E CONSISTENCY PROOF SUMMARY ===
+Run ID          : 95c9d57f-bac3-4299-8d5b-5ea7fe83042c
+DB Row Count    : 13 (steps 0..12)
+UI State Count  : 13 (steps 0..12)
+DOM <tr> Count  : 13 (steps 0..12)
+SSE Reconnects  : 1
+Seq Gaps Found  : 0
+Final Last-Seq  : 13
+
+Step-by-Step Comparison (PostgreSQL DB vs. Final UI State):
+Step | Arrival Seq | DB Loss    | UI Loss    | Match
+-----+-------------+------------+------------+------
+   0 |           1 |   2.500000 |   2.500000 | OK
+   1 |           2 |   2.300000 |   2.300000 | OK
+   2 |           3 |   2.116000 |   2.116000 | OK
+   3 |           7 |   1.946720 |   1.946720 | OK
+   4 |           8 |   1.790982 |   1.790982 | OK
+   5 |           9 |   1.647704 |   1.647704 | OK
+   6 |           4 |   1.515888 |   1.515888 | OK
+   7 |           5 |   1.394617 |   1.394617 | OK
+   8 |           6 |   1.283047 |   1.283047 | OK
+   9 |          10 |   1.180403 |   1.180403 | OK
+  10 |          11 |   1.085971 |   1.085971 | OK
+  11 |          12 |   0.999093 |   0.999093 | OK
+  12 |          13 |   0.919166 |   0.919166 | OK

@@ -32,18 +32,21 @@ class Subscriber:
         self.queue = asyncio.Queue(maxsize=max(1, self.maxsize))
 
     def send_signal(self, signal_name: str) -> None:
+        """Immediately halt metric delivery and enqueue a terminal control signal.
+
+        Clearing unsent queued metrics before inserting `"OVERFLOW"` guarantees
+        we never drop the head of the FIFO queue while delivering a later `seq`
+        at the tail (which would advance the client's `Last-Event-ID` past an
+        undelivered sequence number).
+        """
         if self.closed:
             return
         self.closed = True
-        try:
-            self.queue.put_nowait(signal_name)
-        except asyncio.QueueFull:
-            try:
+        while not self.queue.empty():
+            with contextlib.suppress(asyncio.QueueEmpty):
                 self.queue.get_nowait()
-            except asyncio.QueueEmpty:
-                pass
-            with contextlib.suppress(asyncio.QueueFull):
-                self.queue.put_nowait(signal_name)
+        with contextlib.suppress(asyncio.QueueFull):
+            self.queue.put_nowait(signal_name)
 
 
 class PubSubBroker:

@@ -27,3 +27,11 @@ Per the Soup take-home instructions (*"Note where you used them, which suggestio
    - *Initial AI suggestion:* Check API key validity only once when the HTTP request starts.
    - *Why it was broken:* An already-open SSE stream would continue receiving live metrics after its API key was rotated.
    - *Fix implemented:* `PubSubBroker.revoke_key(key_hash)` tracks revoked key hashes in memory and immediately pushes a `"REVOKED"` control signal into every open subscriber queue bound to that key, terminating the stream before any subsequent metric can be emitted.
+5. **Caught & fixed FIFO `asyncio.Queue` head-drop bug on slow-client overflow (`app/pubsub.py`):**
+   - *Initial AI suggestion:* When `queue.put_nowait("OVERFLOW")` encounters `QueueFull`, pop one item via `queue.get_nowait()` to make room for the `"OVERFLOW"` sentinel.
+   - *Why it was broken:* `asyncio.Queue` is FIFO. Calling `get_nowait()` drops the *oldest* unsent event (`seq = k + 1`) at the head of the queue while leaving later events (`seq = k + 2, k + 3`) ahead of `"OVERFLOW"`. The SSE loop would deliver `seq = k + 2` and advance the client's `Last-Event-ID` past the dropped `seq = k + 1`, permanently losing an event!
+   - *Fix implemented:* On `"OVERFLOW"` (or `"REVOKED"`), `Subscriber.send_signal()` clears all unsent items from the queue before enqueuing `"OVERFLOW"`, ensuring the client's `Last-Event-ID` stays at the exact contiguous `high_water_seq = k` already delivered, so reconnecting fetches `seq > k` with zero gaps.
+6. **Caught Python 3.8+ `asyncio.CancelledError` inheritance in SSE cleanup (`app/main.py`):**
+   - *Initial AI suggestion:* `with contextlib.suppress(Exception): await disconnect_task`.
+   - *Why it was broken:* In modern Python, `asyncio.CancelledError` inherits from `BaseException`, not `Exception`, causing an unhandled traceback in Uvicorn when a server-terminated SSE stream cleaned up its disconnect listener.
+   - *Fix implemented:* Changed to `with contextlib.suppress(BaseException): await disconnect_task`.
