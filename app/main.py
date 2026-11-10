@@ -10,6 +10,7 @@ Implements all REST and live SSE endpoints with:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
@@ -32,6 +33,7 @@ from app.db import Database
 from app.pubsub import DEFAULT_QUEUE_MAXSIZE, PubSubBroker
 
 STATIC_DIR = Path(__file__).parent / "static"
+MAX_BODY_BYTES = 10 * 1024 * 1024
 
 
 class _RedactingLogFilter(logging.Filter):
@@ -319,9 +321,6 @@ class TrackerApp:
 
             # POST /projects/{project_id}/keys/rotate
             if method == "POST" and path.startswith("/projects/") and path.endswith("/keys/rotate"):
-                parts = [p for p in path.split("/") if p]
-                if len(parts) == 3 and parts[0] == "projects" and parts[2] == "rotate":
-                    pass
                 target_project_id = path[len("/projects/") : -len("/keys/rotate")].strip("/")
                 norm_proj = normalize_uuid(target_project_id)
                 if norm_proj is None or norm_proj != auth.project_id:
@@ -382,6 +381,7 @@ class TrackerApp:
                     """
                     INSERT INTO runs (id, project_id, name, status, config, last_seq)
                     VALUES ($1, $2, $3, 'running', $4::jsonb, 0)
+                    ON CONFLICT (id) DO NOTHING
                     RETURNING id, project_id, name, status, config, last_seq, created_at
                     """,
                     run_id,
@@ -389,7 +389,8 @@ class TrackerApp:
                     run_name.strip(),
                     config,
                 )
-                assert row is not None
+                if row is None:
+                    raise HTTPException(409, "Run ID already exists")
                 await self._send_json(
                     send,
                     201,
@@ -893,10 +894,14 @@ class TrackerApp:
     @staticmethod
     async def _read_json(receive: Callable, allow_empty: bool = False) -> Any:
         chunks: List[bytes] = []
+        total_bytes = 0
         while True:
             msg = await receive()
             body_piece = msg.get("body", b"")
             if body_piece:
+                total_bytes += len(body_piece)
+                if total_bytes > MAX_BODY_BYTES:
+                    raise HTTPException(413, "Payload too large")
                 chunks.append(body_piece)
             if not msg.get("more_body", False):
                 break
@@ -935,7 +940,5 @@ class TrackerApp:
         await send({"type": "http.response.start", "status": 200, "headers": headers})
         await send({"type": "http.response.body", "body": body, "more_body": False})
 
-
-import contextlib  # noqa: E402
 
 app = TrackerApp()
