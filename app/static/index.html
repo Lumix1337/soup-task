@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soup · Mini Experiment Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #161922;
+      --border: #262b38;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 20px; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input, button {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    input { min-width: 280px; }
+    button {
+      cursor: pointer;
+      background: #1f2430;
+      font-weight: 600;
+    }
+    button:hover { border-color: var(--accent); }
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .run-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .run-item {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .run-item.active, .run-item:hover {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.08);
+    }
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+    .badge.connected { color: var(--green); border-color: var(--green); }
+    .badge.reconnecting { color: var(--yellow); border-color: var(--yellow); }
+    .badge.disconnected { color: var(--red); border-color: var(--red); }
+    .chart-box {
+      width: 100%;
+      height: 220px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0b0d12;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .meta-row {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Soup · Experiment Tracker</h1>
+    <div class="controls">
+      <input id="api-key-input" type="password" placeholder="Paste Project API Key (soup_sk_...)" />
+      <button id="btn-load-runs">Load Project Runs</button>
+      <button id="btn-create-project">Bootstrap Demo Project</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="card">
+      <h2>
+        <span>Project Runs</span>
+        <button id="btn-new-run" style="font-size:12px;padding:4px 8px;">+ New Run</button>
+      </h2>
+      <ul id="run-list" class="run-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>
+        <span id="active-run-title">Select a run</span>
+        <span id="stream-status" class="badge disconnected">Disconnected</span>
+      </h2>
+      <div class="meta-row">
+        <span>Run ID: <strong id="meta-run-id">—</strong></span>
+        <span>Last Seq: <strong id="meta-last-seq">0</strong></span>
+        <span>Steps: <strong id="meta-step-count">0</strong></span>
+        <span>Reconnects: <strong id="meta-reconnects">0</strong></span>
+        <span>Seq Gaps: <strong id="meta-seq-gaps">0</strong></span>
+      </div>
+      <div class="chart-box">
+        <svg id="loss-chart" width="100%" height="100%" viewBox="0 0 600 200" preserveAspectRatio="none"></svg>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Seq</th>
+            <th>Loss</th>
+            <th>Learning Rate</th>
+            <th>Grad Norm</th>
+          </tr>
+        </thead>
+        <tbody id="metrics-tbody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
