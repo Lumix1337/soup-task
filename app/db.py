@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
 
 CREATE TABLE IF NOT EXISTS runs (
-    id UUID PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'running',
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS runs (
 CREATE INDEX IF NOT EXISTS idx_runs_project_created ON runs(project_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS ingested_batches (
-    run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
     batch_id TEXT NOT NULL,
     payload_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS ingested_batches (
 );
 
 CREATE TABLE IF NOT EXISTS metrics (
-    run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
     step INTEGER NOT NULL CHECK (step >= 0),
     seq BIGINT NOT NULL,
     loss DOUBLE PRECISION NOT NULL,

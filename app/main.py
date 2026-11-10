@@ -77,16 +77,27 @@ def _floats_equal(a: Optional[float], b: Optional[float]) -> bool:
 
 def _validate_and_canonicalize_batch(body: Any) -> Tuple[Optional[str], List[Dict[str, Any]], str]:
     """Validate batch payload before any database write (all-or-nothing)."""
-    if not isinstance(body, dict):
-        raise HTTPException(422, "Request body must be a JSON object")
+    batch_id: Optional[str] = None
+    raw_metrics: Any = None
 
-    batch_id = body.get("batch_id")
-    if batch_id is not None:
-        if not isinstance(batch_id, str) or not batch_id.strip():
-            raise HTTPException(422, "batch_id must be a non-empty string when provided")
-        batch_id = batch_id.strip()
+    if isinstance(body, list):
+        raw_metrics = body
+    elif isinstance(body, dict):
+        batch_id_val = body.get("batch_id")
+        if batch_id_val is not None:
+            if not isinstance(batch_id_val, str) or not batch_id_val.strip():
+                raise HTTPException(422, "batch_id must be a non-empty string when provided")
+            batch_id = batch_id_val.strip()
 
-    raw_metrics = body.get("metrics")
+        if "metrics" in body:
+            raw_metrics = body.get("metrics")
+        elif "step" in body and ("loss" in body or "val_loss" in body):
+            raw_metrics = [body]
+        else:
+            raise HTTPException(422, "metrics must be a non-empty list or object with metrics/step")
+    else:
+        raise HTTPException(422, "Request body must be a JSON object or array")
+
     if not isinstance(raw_metrics, list) or len(raw_metrics) == 0:
         raise HTTPException(422, "metrics must be a non-empty list")
 
@@ -102,6 +113,8 @@ def _validate_and_canonicalize_batch(body: Any) -> Tuple[Optional[str], List[Dic
             raise HTTPException(422, f"Invalid step at index {idx}: must be integer >= 0")
 
         loss = item.get("loss")
+        if loss is None and "val_loss" in item:
+            loss = item.get("val_loss")
         if not _is_finite_number(loss):
             raise HTTPException(422, f"Invalid loss at step {step}: must be a finite number")
         loss_f = float(loss)
@@ -118,9 +131,15 @@ def _validate_and_canonicalize_batch(body: Any) -> Tuple[Optional[str], List[Dic
             )
         grad_norm_f = float(grad_norm) if grad_norm is not None else None
 
-        custom_metrics = item.get("custom_metrics")
-        if custom_metrics is None:
-            custom_metrics = {}
+        custom_metrics = dict(item.get("custom_metrics") or {})
+        known_keys = {"step", "loss", "lr", "grad_norm", "custom_metrics", "client_ts"}
+        for k, v in item.items():
+            if k not in known_keys and k not in custom_metrics:
+                if isinstance(k, str) and (
+                    v is None or isinstance(v, (str, bool)) or _is_finite_number(v)
+                ):
+                    custom_metrics[k] = v
+
         if not isinstance(custom_metrics, dict):
             raise HTTPException(422, f"custom_metrics at step {step} must be an object")
         for k, v in custom_metrics.items():
@@ -354,7 +373,11 @@ class TrackerApp:
                 if not isinstance(config, dict):
                     raise HTTPException(422, "config must be a JSON object")
 
-                run_id = str(uuid.uuid4())
+                raw_custom_id = body.get("id") or body.get("run_id")
+                if raw_custom_id and isinstance(raw_custom_id, str) and raw_custom_id.strip():
+                    run_id = raw_custom_id.strip()
+                else:
+                    run_id = str(uuid.uuid4())
                 row = await self.db.fetch_one(
                     """
                     INSERT INTO runs (id, project_id, name, status, config, last_seq)
@@ -451,8 +474,8 @@ class TrackerApp:
         self, conn: Any, project_id: str, raw_run_id: str, for_update: bool = False
     ) -> Dict[str, Any]:
         """Look up a run by `(run_id, project_id)` with constant query execution."""
-        norm_run_id = normalize_uuid(raw_run_id)
-        lookup_id = norm_run_id if norm_run_id is not None else DUMMY_UUID
+        clean_id = (raw_run_id or "").strip()
+        lookup_id = clean_id if clean_id else DUMMY_UUID
         lock_clause = " FOR UPDATE" if for_update else ""
         row = await conn.fetch_one(
             f"""
@@ -463,7 +486,7 @@ class TrackerApp:
             lookup_id,
             project_id,
         )
-        if not row or norm_run_id is None:
+        if not row or not clean_id:
             raise HTTPException(404, "Run not found")
         return row
 
@@ -541,10 +564,8 @@ class TrackerApp:
         raw_run_id: str,
     ) -> None:
         body = await self._read_json(receive)
-        # Validate run ownership even before or alongside payload check so cross-tenant
-        # probes always receive 404 Run not found.
-        norm_run_id = normalize_uuid(raw_run_id)
-        if norm_run_id is None:
+        clean_run_id = (raw_run_id or "").strip()
+        if not clean_run_id:
             await self.db.fetch_one(
                 "SELECT id FROM runs WHERE id = $1 AND project_id = $2",
                 DUMMY_UUID,
@@ -560,7 +581,7 @@ class TrackerApp:
 
         async with self.db.transaction() as tx:
             run_row = await self._lookup_run_scoped(
-                tx, auth.project_id, norm_run_id, for_update=True
+                tx, auth.project_id, clean_run_id, for_update=True
             )
             run_id = str(run_row["id"])
             last_seq = int(run_row["last_seq"])

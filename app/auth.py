@@ -71,8 +71,17 @@ def extract_key_from_request(
     raw_key = headers.get("x-api-key", "").strip()
     if not raw_key:
         auth_header = headers.get("authorization", "").strip()
-        if auth_header.lower().startswith("bearer "):
+        auth_lower = auth_header.lower()
+        if auth_lower.startswith("bearer "):
             raw_key = auth_header[7:].strip()
+        elif auth_lower.startswith("token "):
+            raw_key = auth_header[6:].strip()
+        elif auth_lower.startswith("api-key "):
+            raw_key = auth_header[8:].strip()
+        elif auth_lower.startswith("apikey "):
+            raw_key = auth_header[7:].strip()
+        elif auth_header:
+            raw_key = auth_header
 
     if not raw_key:
         raise AuthError(401, "Missing API key")
