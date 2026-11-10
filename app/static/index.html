@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Soup · Mini Experiment Tracker</title>
+  <title>Soup · Experiment Tracker</title>
   <style>
     :root {
-      --bg: #0f1117;
-      --panel: #161922;
-      --border: #262b38;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-hover: #1f242c;
+      --border: #30363d;
       --text: #e6edf3;
       --muted: #8b949e;
       --accent: #58a6ff;
@@ -19,10 +20,15 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       padding: 24px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
     }
     header {
       display: flex;
@@ -34,41 +40,81 @@
       gap: 16px;
       flex-wrap: wrap;
     }
-    h1 { margin: 0; font-size: 20px; }
-    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
     input, button {
       background: var(--panel);
       color: var(--text);
       border: 1px solid var(--border);
-      padding: 8px 12px;
+      padding: 7px 12px;
       border-radius: 6px;
       font-family: inherit;
       font-size: 13px;
     }
-    input { min-width: 280px; }
+    input {
+      min-width: 290px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
     button {
       cursor: pointer;
-      background: #1f2430;
+      background: #21262d;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover {
+      background: #30363d;
+      border-color: #8b949e;
+    }
+    .btn-primary {
+      background: #238636;
+      border-color: #2ea043;
+      color: #ffffff;
       font-weight: 600;
     }
-    button:hover { border-color: var(--accent); }
+    .btn-primary:hover {
+      background: #2ea043;
+      border-color: #3fb950;
+    }
     .layout {
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 310px 1fr;
       gap: 20px;
+    }
+    @media (max-width: 860px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
     }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 16px;
+      padding: 18px;
     }
     .card h2 {
-      margin: 0 0 12px 0;
-      font-size: 15px;
+      margin: 0 0 14px 0;
+      font-size: 14px;
+      font-weight: 600;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .run-list {
       list-style: none;
@@ -86,96 +132,129 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      transition: background 0.12s, border-color 0.12s;
     }
     .run-item.active, .run-item:hover {
       border-color: var(--accent);
       background: rgba(88, 166, 255, 0.08);
+    }
+    .run-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .run-sub {
+      color: var(--muted);
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     .badge {
       font-size: 11px;
       padding: 3px 8px;
       border-radius: 999px;
       border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    .badge.connected { color: var(--green); border-color: var(--green); }
-    .badge.reconnecting { color: var(--yellow); border-color: var(--yellow); }
-    .badge.disconnected { color: var(--red); border-color: var(--red); }
+    .badge.connected { color: var(--green); border-color: rgba(63, 185, 80, 0.4); background: rgba(63, 185, 80, 0.1); }
+    .badge.reconnecting { color: var(--yellow); border-color: rgba(210, 153, 34, 0.4); background: rgba(210, 153, 34, 0.1); }
+    .badge.disconnected { color: var(--red); border-color: rgba(248, 81, 73, 0.4); background: rgba(248, 81, 73, 0.1); }
     .chart-box {
       width: 100%;
-      height: 220px;
+      height: 240px;
       border: 1px solid var(--border);
       border-radius: 6px;
-      background: #0b0d12;
+      background: #090d13;
       margin-bottom: 16px;
       position: relative;
+      overflow: hidden;
+    }
+    .meta-row {
+      display: flex;
+      gap: 18px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .meta-row span strong {
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 500;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     th, td {
       text-align: left;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-bottom: 1px solid var(--border);
     }
-    th { color: var(--muted); font-weight: 600; }
-    .meta-row {
-      display: flex;
-      gap: 16px;
-      font-size: 12px;
+    th {
       color: var(--muted);
-      margin-bottom: 12px;
+      font-weight: 600;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+    }
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Soup · Experiment Tracker</h1>
-    <div class="controls">
-      <input id="api-key-input" type="password" placeholder="Paste Project API Key (soup_sk_...)" />
-      <button id="btn-load-runs">Load Project Runs</button>
-      <button id="btn-create-project">Bootstrap Demo Project</button>
+  <div class="container">
+    <header>
+      <h1>Soup · Experiment Tracker</h1>
+      <div class="controls">
+        <input id="api-key-input" type="text" placeholder="Project API Key (soup_sk_...)" />
+        <button id="btn-load-runs">Load Project Runs</button>
+        <button id="btn-create-project" class="btn-primary">Bootstrap Demo Project</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <section class="card">
+        <h2>
+          <span>Project Runs</span>
+          <button id="btn-new-run" style="font-size:12px;padding:3px 8px;">+ New Run</button>
+        </h2>
+        <ul id="run-list" class="run-list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>
+          <span id="active-run-title">Select a run</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="btn-send-metrics" style="font-size:12px;padding:3px 8px;">Send 10 Steps</button>
+            <button id="btn-live-stream" style="font-size:12px;padding:3px 8px;">Live Feed: Off</button>
+            <span id="stream-status" class="badge disconnected">Disconnected</span>
+          </div>
+        </h2>
+        <div class="meta-row">
+          <span>Run ID: <strong id="meta-run-id">—</strong></span>
+          <span>Last Seq: <strong id="meta-last-seq">0</strong></span>
+          <span>Steps: <strong id="meta-step-count">0</strong></span>
+          <span>Reconnects: <strong id="meta-reconnects">0</strong></span>
+          <span>Seq Gaps: <strong id="meta-seq-gaps">0</strong></span>
+        </div>
+        <div class="chart-box">
+          <svg id="loss-chart" width="100%" height="100%"></svg>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Seq</th>
+              <th>Loss</th>
+              <th>Learning Rate</th>
+              <th>Grad Norm</th>
+            </tr>
+          </thead>
+          <tbody id="metrics-tbody"></tbody>
+        </table>
+      </section>
     </div>
-  </header>
-
-  <div class="layout">
-    <section class="card">
-      <h2>
-        <span>Project Runs</span>
-        <button id="btn-new-run" style="font-size:12px;padding:4px 8px;">+ New Run</button>
-      </h2>
-      <ul id="run-list" class="run-list"></ul>
-    </section>
-
-    <section class="card">
-      <h2>
-        <span id="active-run-title">Select a run</span>
-        <span id="stream-status" class="badge disconnected">Disconnected</span>
-      </h2>
-      <div class="meta-row">
-        <span>Run ID: <strong id="meta-run-id">—</strong></span>
-        <span>Last Seq: <strong id="meta-last-seq">0</strong></span>
-        <span>Steps: <strong id="meta-step-count">0</strong></span>
-        <span>Reconnects: <strong id="meta-reconnects">0</strong></span>
-        <span>Seq Gaps: <strong id="meta-seq-gaps">0</strong></span>
-      </div>
-      <div class="chart-box">
-        <svg id="loss-chart" width="100%" height="100%" viewBox="0 0 600 200" preserveAspectRatio="none"></svg>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Step</th>
-            <th>Seq</th>
-            <th>Loss</th>
-            <th>Learning Rate</th>
-            <th>Grad Norm</th>
-          </tr>
-        </thead>
-        <tbody id="metrics-tbody"></tbody>
-      </table>
-    </section>
   </div>
 
   <script src="/static/app.js"></script>
